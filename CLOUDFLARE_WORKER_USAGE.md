@@ -10,6 +10,18 @@
 KVksL2jJ6eLOP7cX
 ```
 
+## 为什么你之前会“部署不了”
+
+你截图里的报错：
+
+```txt
+No such module "crypto-js"
+```
+
+是因为 Cloudflare 控制台在线编辑器不会自动帮你安装 npm 包。
+
+现在新版 `cloudflare_worker_decrypt.js` **已移除 `crypto-js` 依赖**，改为纯 JavaScript 内置实现 AES-128-ECB，可直接在 Cloudflare 控制台粘贴部署。
+
 ## 你要的场景
 
 你会提供一个接口，接口返回内容类似 `4.txt`（即加密后的 Base64 字符串）。
@@ -22,21 +34,24 @@ KVksL2jJ6eLOP7cX
 
 ## 在 Cloudflare Workers 运行
 
+### 方式 A：Cloudflare 控制台直接粘贴（推荐）
+
+1. 创建 Worker。
+2. 把 `cloudflare_worker_decrypt.js` 全量粘贴到 `worker.js`。
+3. 设置环境变量 `ENCRYPTED_API_URL`（可选）。
+4. 保存并部署。
+
+### 方式 B：Wrangler
+
 1. 初始化 Worker（如果你还没有项目）：
 
 ```bash
 npm create cloudflare@latest
 ```
 
-2. 安装依赖：
+2. 把 `cloudflare_worker_decrypt.js` 复制到 Worker 项目 `src/worker.js`（或你的入口文件）。
 
-```bash
-npm i crypto-js
-```
-
-3. 把 `cloudflare_worker_decrypt.js` 复制到 Worker 项目 `src/worker.js`（或你的入口文件）。
-
-4. 配置环境变量（可选）：
+3. 配置环境变量（可选）：
 
 ```toml
 # wrangler.toml
@@ -44,7 +59,7 @@ npm i crypto-js
 ENCRYPTED_API_URL = "https://your-api.example.com/encrypted"
 ```
 
-5. 本地调试：
+4. 本地调试：
 
 ```bash
 npx wrangler dev
