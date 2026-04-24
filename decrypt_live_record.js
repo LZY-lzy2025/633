@@ -1,8 +1,6 @@
 const fs = require('fs');
+const path = require('path');
 const crypto = require('crypto');
-
-const sourcePath = './encryptionLiveRecordList.txt';
-const outputPath = './encryptionLiveRecordList.decrypted.json';
 
 const groups = [
   [0x59, 0x44, 0x79, 0x61],
@@ -18,14 +16,51 @@ const key = Buffer.from(
   )
 );
 
-const encryptedBase64 = fs.readFileSync(sourcePath, 'utf8').trim();
-const encrypted = Buffer.from(encryptedBase64, 'base64');
+function decryptBase64AesEcb(base64Content) {
+  const encrypted = Buffer.from(base64Content.trim(), 'base64');
+  const decipher = crypto.createDecipheriv('aes-128-ecb', key, null);
+  return Buffer.concat([decipher.update(encrypted), decipher.final()]).toString('utf8');
+}
 
-const decipher = crypto.createDecipheriv('aes-128-ecb', key, null);
-const decrypted = Buffer.concat([decipher.update(encrypted), decipher.final()]);
+function decryptFile(sourcePath, outputPath) {
+  const encryptedBase64 = fs.readFileSync(sourcePath, 'utf8');
+  const decryptedContent = decryptBase64AesEcb(encryptedBase64);
+  fs.writeFileSync(outputPath, decryptedContent, 'utf8');
+}
 
-fs.writeFileSync(outputPath, decrypted.toString('utf8'));
+function buildOutputPath(inputFile) {
+  const ext = path.extname(inputFile);
+  const base = ext ? inputFile.slice(0, -ext.length) : inputFile;
+  return `${base}.decrypted.json`;
+}
 
-console.log('AES key (utf8):', key.toString('utf8'));
-console.log('AES key (hex):', key.toString('hex'));
-console.log('Wrote:', outputPath);
+function resolveInputFiles(args) {
+  if (args.length > 0) {
+    return args;
+  }
+
+  return fs
+    .readdirSync('.')
+    .filter((name) => /^\d+\.txt$/.test(name))
+    .sort((a, b) => Number(a) - Number(b));
+}
+
+function main() {
+  const inputFiles = resolveInputFiles(process.argv.slice(2));
+
+  if (inputFiles.length === 0) {
+    console.error('No input files found. Pass file paths or add files like 1.txt, 2.txt, ...');
+    process.exit(1);
+  }
+
+  for (const inputFile of inputFiles) {
+    const outputFile = buildOutputPath(inputFile);
+    decryptFile(inputFile, outputFile);
+    console.log(`Decrypted ${inputFile} -> ${outputFile}`);
+  }
+
+  console.log('AES key (utf8):', key.toString('utf8'));
+  console.log('AES key (hex):', key.toString('hex'));
+}
+
+main();
